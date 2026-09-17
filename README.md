@@ -50,6 +50,7 @@ optional for local development.
 | GET    | `/api/tasks/{id}`            | Fetch one task                           |
 | PUT    | `/api/tasks/{id}`            | Partial update of title/description/status |
 | DELETE | `/api/tasks/{id}`            | Remove task (204)                        |
+| DELETE | `/api/tasks?status=done`     | Bulk remove by status, returns `{removed}` |
 
 Statuses: `todo`, `in_progress`, `done`. Errors return `{"error": "..."}` with
 400 or 404.

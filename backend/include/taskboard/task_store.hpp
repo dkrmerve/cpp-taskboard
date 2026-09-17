@@ -37,6 +37,9 @@ public:
 
     bool remove(std::uint64_t id);
 
+    /// Removes every task with the given status. Returns how many were deleted.
+    std::size_t remove_by_status(Status status);
+
     Stats stats() const;
     std::size_t size() const;
     void clear();
