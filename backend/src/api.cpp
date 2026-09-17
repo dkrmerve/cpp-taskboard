@@ -93,6 +93,20 @@ void register_routes(httplib::Server& server, TaskStore& store) {
         }
     });
 
+    // Bulk delete: DELETE /api/tasks?status=done
+    server.Delete("/api/tasks", [&store](const httplib::Request& req, httplib::Response& res) {
+        if (!req.has_param("status")) {
+            send_error(res, 400, "status query parameter is required");
+            return;
+        }
+        const auto status = status_from_string(req.get_param_value("status"));
+        if (!status) {
+            send_error(res, 400, "unknown status filter");
+            return;
+        }
+        send_json(res, 200, json{{"removed", store.remove_by_status(*status)}});
+    });
+
     server.Get(R"(/api/tasks/(\d+))", [&store](const httplib::Request& req, httplib::Response& res) {
         const auto id = parse_id(req.matches[1]);
         if (!id) {

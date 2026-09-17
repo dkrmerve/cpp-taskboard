@@ -140,6 +140,26 @@ TEST_F(ApiTest, DeleteRemovesTask) {
     EXPECT_EQ(again->status, 404);
 }
 
+TEST_F(ApiTest, BulkDeleteByStatus) {
+    post_task({{"title", "a"}, {"status", "done"}});
+    post_task({{"title", "b"}});
+    post_task({{"title", "c"}, {"status", "done"}});
+
+    auto res = client_->Delete("/api/tasks?status=done");
+    ASSERT_TRUE(res);
+    EXPECT_EQ(res->status, 200);
+    EXPECT_EQ(json::parse(res->body)["removed"], 2);
+    EXPECT_EQ(store_.size(), 1u);
+
+    auto missing_param = client_->Delete("/api/tasks");
+    ASSERT_TRUE(missing_param);
+    EXPECT_EQ(missing_param->status, 400);
+
+    auto bad_status = client_->Delete("/api/tasks?status=nope");
+    ASSERT_TRUE(bad_status);
+    EXPECT_EQ(bad_status->status, 400);
+}
+
 TEST_F(ApiTest, ListFilterAndStats) {
     post_task({{"title", "a"}});
     post_task({{"title", "b"}, {"status", "done"}});

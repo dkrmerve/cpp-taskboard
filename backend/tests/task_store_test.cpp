@@ -105,6 +105,18 @@ TEST(TaskStore, RemoveReportsWhetherSomethingWasDeleted) {
     EXPECT_EQ(store.size(), 0u);
 }
 
+TEST(TaskStore, RemoveByStatusDeletesOnlyMatching) {
+    TaskStore store;
+    store.create(input("a", "", Status::Done));
+    store.create(input("b", "", Status::Todo));
+    store.create(input("c", "", Status::Done));
+
+    EXPECT_EQ(store.remove_by_status(Status::Done), 2u);
+    EXPECT_EQ(store.size(), 1u);
+    EXPECT_EQ(store.list().front().title, "b");
+    EXPECT_EQ(store.remove_by_status(Status::Done), 0u);
+}
+
 TEST(TaskStore, StatsCountPerStatus) {
     TaskStore store;
     store.create(input("a", "", Status::Todo));
