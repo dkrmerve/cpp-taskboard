@@ -1,0 +1,25 @@
+# Build output
+build/
+build-*/
+cmake-build-*/
+out/
+_deps/
+
+# IDE
+.idea/
+.vs/
+.vscode/
+*.swp
+.DS_Store
+
+# Compiled artefacts
+*.o
+*.obj
+*.a
+*.lib
+*.exe
+*.pdb
+
+# Docker / env
+.env
+*.log

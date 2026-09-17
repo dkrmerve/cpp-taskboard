@@ -1,0 +1,22 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    image: cpp-taskboard-backend:local
+    environment:
+      PORT: "8080"
+      HOST: "0.0.0.0"
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+    image: cpp-taskboard-frontend:local
+    ports:
+      - "3000:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped

@@ -1,0 +1,103 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build & test (${{ matrix.compiler }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - compiler: gcc
+            cc: gcc
+            cxx: g++
+          - compiler: clang
+            cc: clang
+            cxx: clang++
+    env:
+      CC: ${{ matrix.cc }}
+      CXX: ${{ matrix.cxx }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends cmake ninja-build clang
+
+      - name: Cache FetchContent dependencies
+        uses: actions/cache@v4
+        with:
+          path: backend/build/_deps
+          key: deps-${{ runner.os }}-${{ matrix.compiler }}-${{ hashFiles('backend/CMakeLists.txt') }}
+
+      - name: Configure
+        run: cmake -S backend -B backend/build -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build backend/build --parallel
+
+      - name: Test
+        run: ctest --test-dir backend/build --output-on-failure
+
+      - name: Upload test log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ctest-log-${{ matrix.compiler }}
+          path: backend/build/Testing/Temporary/LastTest.log
+
+  frontend-lint:
+    name: Frontend syntax check
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Check JavaScript parses
+        run: node --check frontend/app.js
+
+  docker:
+    name: Docker Compose smoke test
+    runs-on: ubuntu-24.04
+    needs: [build-and-test, frontend-lint]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build images
+        run: docker compose build
+
+      - name: Start stack
+        run: docker compose up -d --wait --wait-timeout 120
+
+      - name: Smoke test API through nginx
+        run: |
+          set -eux
+          curl -fsS http://localhost:3000/ | grep -q "Taskboard"
+          curl -fsS http://localhost:3000/api/health | grep -q '"status":"ok"'
+          id=$(curl -fsS -X POST http://localhost:3000/api/tasks \
+                -H 'Content-Type: application/json' \
+                -d '{"title":"ci smoke"}' | sed -E 's/.*"id":([0-9]+).*/\1/')
+          curl -fsS -X PUT "http://localhost:3000/api/tasks/$id" \
+                -H 'Content-Type: application/json' -d '{"status":"done"}' | grep -q '"done"'
+          curl -fsS http://localhost:3000/api/stats | grep -q '"done":1'
+          curl -fsS -X DELETE "http://localhost:3000/api/tasks/$id" -o /dev/null -w '%{http_code}\n' | grep -q 204
+
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose logs
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
