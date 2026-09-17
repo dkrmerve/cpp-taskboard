@@ -12,6 +12,7 @@
   const errorBox = document.getElementById("error");
   const healthDot = document.getElementById("health");
   const template = document.getElementById("task-template");
+  const clearDoneButton = document.getElementById("clear-done");
 
   async function api(path, options = {}) {
     const res = await fetch(API_BASE + path, {
@@ -56,6 +57,16 @@
   function renderStats(stats) {
     for (const key of ["total", ...STATUSES]) {
       document.getElementById(`stat-${key}`).textContent = stats[key] ?? 0;
+    }
+    clearDoneButton.disabled = (stats.done ?? 0) === 0;
+  }
+
+  async function clearDone() {
+    try {
+      await api("/tasks?status=done", { method: "DELETE" });
+      await refresh();
+    } catch (err) {
+      showError(err.message);
     }
   }
 
@@ -115,6 +126,8 @@
       showError(err.message);
     }
   });
+
+  clearDoneButton.addEventListener("click", clearDone);
 
   checkHealth();
   refresh();

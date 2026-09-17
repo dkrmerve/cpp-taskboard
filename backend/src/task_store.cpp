@@ -68,6 +68,20 @@ bool TaskStore::remove(std::uint64_t id) {
     return tasks_.erase(id) > 0;
 }
 
+std::size_t TaskStore::remove_by_status(Status status) {
+    std::lock_guard lock(mutex_);
+    std::size_t removed = 0;
+    for (auto it = tasks_.begin(); it != tasks_.end();) {
+        if (it->second.status == status) {
+            it = tasks_.erase(it);
+            ++removed;
+        } else {
+            ++it;
+        }
+    }
+    return removed;
+}
+
 Stats TaskStore::stats() const {
     std::lock_guard lock(mutex_);
     Stats s;
